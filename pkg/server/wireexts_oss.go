@@ -97,6 +97,7 @@ var wireExtsBasicSet = wire.NewSet(
 	wire.Bind(new(auth.IDSigner), new(*idimpl.LocalSigner)),
 	manager.ProvideInstaller,
 	wire.Bind(new(plugins.Installer), new(*manager.PluginInstaller)),
+	wire.Bind(new(anonymous.Service), new(*anonimpl.ProvideAnonymousDeviceService)),
 )
 
 var wireExtsSet = wire.NewSet(

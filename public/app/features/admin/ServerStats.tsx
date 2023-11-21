@@ -81,6 +81,8 @@ export const ServerStats = () => {
               { name: 'Users total', value: stats.users },
               { name: 'Active users in last 30 days', value: stats.activeUsers },
               { name: 'Active sessions', value: stats.activeSessions },
+              // how would i add the anonymous users to this? Based on stats.active
+              { name: 'Active anonymous users in last 30 days', value: stats.activeAnonymousUsers ? stats.activeAnonymousUsers : 0 },
             ]}
             footer={
               hasAccessToAdminUsers && (
