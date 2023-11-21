@@ -523,7 +523,6 @@ func TestDashAlertMigration(t *testing.T) {
 			expectedRulesMap := expected[orgId]
 			require.Len(t, rules, len(expectedRulesMap))
 			for _, r := range rules {
-				delete(r.Labels, "rule_uid") // Not checking this here.
 				exp := expectedRulesMap[r.Title].Labels
 				require.Lenf(t, r.Labels, len(exp), "rule doesn't have correct number of labels: %s", r.Title)
 				for l := range r.Labels {
@@ -630,7 +629,6 @@ func TestDashAlertMigration(t *testing.T) {
 			expectedRulesMap := expected[orgId]
 			require.Len(t, rules, len(expectedRulesMap))
 			for _, r := range rules {
-				delete(r.Labels, "rule_uid") // Not checking this here.
 				exp := expectedRulesMap[r.Title].Labels
 				require.Lenf(t, r.Labels, len(exp), "rule doesn't have correct number of labels: %s", r.Title)
 				for l := range r.Labels {
@@ -1058,8 +1056,6 @@ func TestDashAlertQueryMigration(t *testing.T) {
 
 				for _, r := range rules {
 					// Remove generated fields.
-					require.NotEqual(t, r.Labels["rule_uid"], "")
-					delete(r.Labels, "rule_uid")
 					require.NotEqual(t, r.Annotations[ngModels.MigratedAlertIdAnnotation], "")
 					delete(r.Annotations, ngModels.MigratedAlertIdAnnotation)
 

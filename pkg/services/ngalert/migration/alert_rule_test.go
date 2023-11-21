@@ -308,6 +308,32 @@ func TestMakeAlertRule(t *testing.T) {
 		require.Greater(t, len(parts[1]), 8, "unique identifier should be longer than 9 characters")
 		require.Equal(t, store.AlertDefinitionMaxTitleLength-1, len(parts[0])+len(parts[1]), "truncated name + underscore + unique identifier should together be DefaultFieldMaxLength")
 	})
+
+	t.Run("keep last state error dash alert is silenced", func(t *testing.T) {
+		service := NewTestMigrationService(t, sqlStore, nil)
+		m := service.newOrgMigration(1)
+		da := createTestDashAlert()
+		da.Settings.Set("executionErrorState", "keep_state")
+
+		ar, err := m.migrateAlert(context.Background(), &logtest.Fake{}, da, info)
+		require.NoError(t, err)
+
+		n, v := getLabelForErrorSilenceMatching()
+		require.Equal(t, ar.Labels[n], v)
+	})
+
+	t.Run("keep last state nodata dash alert is silenced", func(t *testing.T) {
+		service := NewTestMigrationService(t, sqlStore, nil)
+		m := service.newOrgMigration(1)
+		da := createTestDashAlert()
+		da.Settings.Set("noDataState", "keep_state")
+
+		ar, err := m.migrateAlert(context.Background(), &logtest.Fake{}, da, info)
+		require.NoError(t, err)
+
+		n, v := getLabelForNoDataSilenceMatching()
+		require.Equal(t, ar.Labels[n], v)
+	})
 }
 
 func createTestDashAlert() *legacymodels.Alert {

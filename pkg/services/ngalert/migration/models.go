@@ -1,9 +1,8 @@
 package migration
 
 import (
+	"io"
 	"strings"
-
-	pb "github.com/prometheus/alertmanager/silence/silencepb"
 
 	"github.com/grafana/grafana/pkg/infra/log"
 	"github.com/grafana/grafana/pkg/services/accesscontrol"
@@ -27,10 +26,14 @@ type OrgMigration struct {
 
 	orgID               int64
 	seenUIDs            Deduplicator
-	silences            []*pb.MeshSilence
 	alertRuleTitleDedup map[string]Deduplicator // Folder -> Deduplicator (Title).
 	alertRuleGroupDedup map[string]Deduplicator // Folder -> Deduplicator (Group).
 	channelCache        *ChannelCache
+
+	// Silences
+	silenceFile                  func(filename string) (io.WriteCloser, error)
+	rulesWithErrorSilenceLabels  int
+	rulesWithNoDataSilenceLabels int
 
 	// Migrated folder for a dashboard based on permissions. Parent Folder ID -> unique dashboard permission -> custom folder.
 	permissionsMap        map[int64]map[permissionHash]*folder.Folder
@@ -53,12 +56,13 @@ func (ms *migrationService) newOrgMigration(orgID int64) *OrgMigration {
 		orgID: orgID,
 		// We deduplicate for case-insensitive matching in MySQL-compatible backend flavours because they use case-insensitive collation.
 		seenUIDs:            Deduplicator{set: make(map[string]struct{}), caseInsensitive: ms.migrationStore.CaseInsensitive()},
-		silences:            make([]*pb.MeshSilence, 0),
 		alertRuleTitleDedup: make(map[string]Deduplicator),
 
 		// We deduplicate alert rule groups so that we don't have to ensure that the alerts rules have the same interval.
 		alertRuleGroupDedup: make(map[string]Deduplicator),
 		channelCache:        &ChannelCache{cache: make(map[any]*legacymodels.AlertNotification)},
+
+		silenceFile: openReplace,
 
 		permissionsMap:        make(map[int64]map[permissionHash]*folder.Folder),
 		folderCache:           make(map[int64]*folder.Folder),
