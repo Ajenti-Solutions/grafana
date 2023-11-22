@@ -5,20 +5,22 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/grafana/grafana/pkg/api/routing"
 	"github.com/grafana/grafana/pkg/infra/localcache"
 	"github.com/grafana/grafana/pkg/infra/log"
 	"github.com/grafana/grafana/pkg/infra/network"
 	"github.com/grafana/grafana/pkg/infra/serverlock"
 	"github.com/grafana/grafana/pkg/infra/usagestats"
+	"github.com/grafana/grafana/pkg/services/accesscontrol"
 	"github.com/grafana/grafana/pkg/services/anonymous"
 	"github.com/grafana/grafana/pkg/services/anonymous/anonimpl/anonstore"
+	"github.com/grafana/grafana/pkg/services/anonymous/anonimpl/api"
 	"github.com/grafana/grafana/pkg/services/authn"
 	"github.com/grafana/grafana/pkg/services/org"
 	"github.com/grafana/grafana/pkg/setting"
 	"github.com/grafana/grafana/pkg/web"
 )
 
-const thirtyDays = 30 * 24 * time.Hour
 const deviceIDHeader = "X-Grafana-Device-Id"
 const keepFor = time.Hour * 24 * 61
 
@@ -31,7 +33,7 @@ type AnonDeviceService struct {
 
 func ProvideAnonymousDeviceService(usageStats usagestats.Service, authBroker authn.Service,
 	anonStore anonstore.AnonStore, cfg *setting.Cfg, orgService org.Service,
-	serverLockService *serverlock.ServerLockService,
+	serverLockService *serverlock.ServerLockService, accesscontrol accesscontrol.AccessControl, routeRegister routing.RouteRegister,
 ) *AnonDeviceService {
 	a := &AnonDeviceService{
 		log:        log.New("anonymous-session-service"),
@@ -52,7 +54,11 @@ func ProvideAnonymousDeviceService(usageStats usagestats.Service, authBroker aut
 	if anonClient.cfg.AnonymousEnabled {
 		authBroker.RegisterClient(anonClient)
 		authBroker.RegisterPostLoginHook(a.untagDevice, 100)
+
 	}
+
+	anonAPI := api.NewAnonDeviceServiceAPI(cfg, anonStore, accesscontrol, routeRegister)
+	anonAPI.RegisterAPIEndpoints()
 
 	return a
 }
@@ -60,7 +66,7 @@ func ProvideAnonymousDeviceService(usageStats usagestats.Service, authBroker aut
 func (a *AnonDeviceService) usageStatFn(ctx context.Context) (map[string]any, error) {
 	// Count the number of unique devices that have been updated in the last 30 days.
 	// One minute is added to the end time as mysql has a precision of seconds and it will break tests that write too fast.
-	anonUIDeviceCount, err := a.anonStore.CountDevices(ctx, time.Now().Add(-thirtyDays), time.Now().Add(time.Minute))
+	anonUIDeviceCount, err := a.anonStore.CountDevices(ctx, time.Now().Add(-anonymous.ThirtyDays), time.Now().Add(time.Minute))
 	if err != nil {
 		return nil, err
 	}

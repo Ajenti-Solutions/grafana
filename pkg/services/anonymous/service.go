@@ -4,18 +4,15 @@ import (
 	"context"
 	"net/http"
 	"time"
-
-	"github.com/grafana/grafana/pkg/services/anonymous/anonimpl/anonstore"
 )
 
 type DeviceKind string
 
 const (
 	AnonDeviceUI DeviceKind = "ui-anon-session"
+	ThirtyDays              = 30 * 24 * time.Hour
 )
 
 type Service interface {
 	TagDevice(context.Context, *http.Request, DeviceKind) error
-	ListDevices(ctx context.Context, from *time.Time, to *time.Time) ([]*anonstore.Device, error)
-	CountDevices(ctx context.Context, from time.Time, to time.Time) (int64, error)
 }

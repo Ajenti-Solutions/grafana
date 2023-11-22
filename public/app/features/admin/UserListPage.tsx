@@ -17,6 +17,7 @@ import { UserListPublicDashboardPage } from './UserListPublicDashboardPage/UserL
 enum TabView {
   ADMIN = 'admin',
   ORG = 'org',
+  ANON = 'anon',
   PUBLIC_DASHBOARDS = 'public-dashboards',
 }
 
@@ -34,6 +35,7 @@ const PublicDashboardsTab = ({ view, setView }: { view: TabView | null; setView:
 const TAB_PAGE_MAP: Record<TabView, React.ReactElement> = {
   [TabView.ADMIN]: <UserListAdminPageContent />,
   [TabView.ORG]: <UsersListPageContent />,
+  [TabView.ANON]: <UsersListPageContent />,
   [TabView.PUBLIC_DASHBOARDS]: <UserListPublicDashboardPage />,
 };
 
@@ -73,6 +75,12 @@ export default function UserListPage() {
             active={view === TabView.ORG}
             onChangeTab={() => setView(TabView.ORG)}
             data-testid={selectors.tabs.orgUsers}
+          />
+          <Tab
+            label="Anonymous users"
+            active={view === TabView.ANON}
+            onChangeTab={() => setView(TabView.ANON)}
+            data-testid={selectors.tabs.anonUsers}
           />
           {hasEmailSharingEnabled && <PublicDashboardsTab view={view} setView={setView} />}
         </TabsBar>
