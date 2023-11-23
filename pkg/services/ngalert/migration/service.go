@@ -18,6 +18,9 @@ const actionName = "alerting migration"
 
 const anyOrg = 0
 
+//nolint:stylecheck
+var ForceMigrationError = fmt.Errorf("Grafana has already been migrated to Unified Alerting. Any alert rules created while using Unified Alerting will be deleted by rolling back. Set force_migration=true in your grafana.ini and restart Grafana to roll back and delete Unified Alerting configuration data.")
+
 type UpgradeService interface {
 	Run(ctx context.Context) error
 }
@@ -52,10 +55,11 @@ func ProvideService(
 // Run starts the migration, any migration issues will throw an error.
 // If we are moving from legacy->UA:
 //   - All orgs without their migration status set to true in the kvstore will be migrated.
-//   - If CleanUpgrade=true, then UA will be reverted first. So, all orgs will be migrated from scratch.
+//   - If CleanUpgrade=true, then UA data will be deleted first. So, all orgs will be migrated from scratch.
 //
 // If we are moving from UA->legacy:
-//   - No-op except to set a kvstore flag with orgId=0 that lets us determine when we move from legacy->UA. No UA resources are deleted or reverted.
+//   - If ForceMigration=true, then UA data will be deleted.
+//   - Otherwise, no-op except to set a kvstore flag with orgId=0 that lets us determine when we move from legacy->UA. No UA resources are deleted or reverted.
 func (ms *migrationService) Run(ctx context.Context) error {
 	var errMigration error
 	errLock := ms.lock.LockExecuteAndRelease(ctx, actionName, time.Minute*10, func(ctx context.Context) {
@@ -65,8 +69,18 @@ func (ms *migrationService) Run(ctx context.Context) error {
 			if err != nil {
 				return fmt.Errorf("getting migration status: %w", err)
 			}
-
 			if !ms.cfg.UnifiedAlerting.IsEnabled() {
+				//nolint:staticcheck
+				if migrated && ms.cfg.ForceMigration { // TODO: Remove in v11.
+					ms.log.Info("ForceMigration enabled, deleting unified alerting data")
+					err := ms.migrationStore.RevertAllOrgs(ctx)
+					if err != nil {
+						return fmt.Errorf("force_migration revert: %w", err)
+					}
+					ms.log.Info("Unified alerting data deleted")
+					return nil
+				}
+
 				// Set status to false so that next time UA is enabled, we run the migration again. That is when
 				// CleanUpgrade will be checked to determine if revert should happen.
 				err = ms.migrationStore.SetMigrated(ctx, anyOrg, false)
@@ -83,14 +97,13 @@ func (ms *migrationService) Run(ctx context.Context) error {
 
 			// Safeguard to prevent data loss.
 			if ms.cfg.UnifiedAlerting.Upgrade.CleanUpgrade {
-				ms.log.Info("CleanUpgrade enabled, reverting and migrating orgs from scratch")
+				ms.log.Info("CleanUpgrade enabled, deleting unified alerting data")
 				// Revert migration
-				ms.log.Info("Reverting unified alerting data")
 				err := ms.migrationStore.RevertAllOrgs(ctx)
 				if err != nil {
-					return fmt.Errorf("reverting: %w", err)
+					return fmt.Errorf("clean_upgrade revert: %w", err)
 				}
-				ms.log.Info("Unified alerting data reverted")
+				ms.log.Info("Unified alerting data deleted")
 			}
 
 			ms.log.Info("Starting legacy migration")

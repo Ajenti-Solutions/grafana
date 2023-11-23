@@ -95,6 +95,28 @@ func TestServiceStart(t *testing.T) {
 			isMigrationRun: false,
 			expected:       false,
 		},
+		{
+			name: "when unified alerting disabled, migration is already run and force migration is enabled, then revert migration",
+			config: &setting.Cfg{
+				UnifiedAlerting: setting.UnifiedAlertingSettings{
+					Enabled: pointer(false),
+				},
+				ForceMigration: true,
+			},
+			isMigrationRun: true,
+			expected:       false,
+		},
+		{
+			name: "when unified alerting disabled, migration is already run and force migration is disabled, then the migration status should set to false",
+			config: &setting.Cfg{
+				UnifiedAlerting: setting.UnifiedAlertingSettings{
+					Enabled: pointer(false),
+				},
+				ForceMigration: false,
+			},
+			isMigrationRun: true,
+			expected:       false,
+		},
 	}
 
 	sqlStore := db.InitTestDB(t)
