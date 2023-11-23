@@ -42,18 +42,6 @@ export interface DashboardSceneState extends SceneObjectState {
   tags?: string[];
   /** Is editable */
   editable?: boolean;
-  /** Default Timezone */
-  timezone: string;
-  /** Day when the week starts */
-  weekStart: string;
-  /** True when live */
-  liveNow: boolean;
-  /** Timepicker settings */
-  timepicker: {
-    refresh_intervals?: string[];
-    nowDelay?: string;
-    hidden?: boolean;
-  };
   /** Tooltip settings */
   graphTooltip: number;
   /** A uid when saved */
@@ -111,14 +99,6 @@ export class DashboardScene extends SceneObjectBase<DashboardSceneState> {
     super({
       title: 'Dashboard',
       meta: {},
-      timezone: 'browser',
-      timepicker: {
-        refresh_intervals: undefined,
-        nowDelay: undefined,
-        hidden: false,
-      },
-      weekStart: '',
-      liveNow: false,
       editable: true,
       graphTooltip: 0,
       body: state.body ?? new SceneFlexLayout({ children: [] }),
