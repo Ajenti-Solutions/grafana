@@ -127,8 +127,6 @@ interface State {
   visualisationType?: LogsVisualisationType;
   logsContainer?: HTMLDivElement;
 }
-config.featureToggles.exploreScrollableLogsContainer = true;
-const scrollableLogsContainer = config.featureToggles.exploreScrollableLogsContainer;
 
 // we need to define the order of these explicitly
 const DEDUP_OPTIONS = [
@@ -439,7 +437,7 @@ class UnthemedLogs extends PureComponent<Props, State> {
   };
 
   scrollIntoView = (element: HTMLElement) => {
-    if (config.featureToggles.exploreScrollableLogsContainer) {
+    if (config.featureToggles.logsInfiniteScrolling) {
       if (this.state.logsContainer) {
         this.topLogsRef.current?.scrollIntoView();
         this.state.logsContainer.scroll({
@@ -489,7 +487,7 @@ class UnthemedLogs extends PureComponent<Props, State> {
   });
 
   scrollToTopLogs = () => {
-    if (config.featureToggles.exploreScrollableLogsContainer) {
+    if (config.featureToggles.logsInfiniteScrolling) {
       if (this.state.logsContainer) {
         this.state.logsContainer.scroll({
           behavior: 'auto',
@@ -753,7 +751,7 @@ class UnthemedLogs extends PureComponent<Props, State> {
             )}
             {this.state.visualisationType === 'logs' && hasData && (
               <div
-                className={scrollableLogsContainer ? styles.scrollableLogRows : styles.logRows}
+                className={config.featureToggles.logsInfiniteScrolling ? styles.scrollableLogRows : styles.logRows}
                 data-testid="logRows"
                 ref={this.onLogsContainerRef}
               >
@@ -883,7 +881,7 @@ const getStyles = (theme: GrafanaTheme2, wrapLogMessage: boolean, tableHeight: n
       overflow-x: scroll;
       overflow-y: visible;
       width: 100%;
-      max-height: calc(100vh - 630px);
+      max-height: calc(100vh - 650px);
     `,
     logRows: css`
       overflow-x: ${wrapLogMessage ? 'unset' : 'scroll'};
@@ -899,7 +897,7 @@ const getStyles = (theme: GrafanaTheme2, wrapLogMessage: boolean, tableHeight: n
       margin: 0 0 0 ${theme.spacing(1)};
     `,
     stickyNavigation: css`
-      ${scrollableLogsContainer && 'margin-bottom: 0px;'}
+      ${config.featureToggles.logsInfiniteScrolling && 'margin-bottom: 0px;'}
       overflow: visible;
     `,
   };
