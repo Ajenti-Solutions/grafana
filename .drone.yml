@@ -589,6 +589,7 @@ steps:
     gcc libc-dev make
   - pip3 install docker-compose
   - apk del .docker-compose-deps
+  - cd devenv
   - docker-compose up
   depends_on: []
   image: alpine:3.18.4
@@ -1862,6 +1863,7 @@ steps:
     gcc libc-dev make
   - pip3 install docker-compose
   - apk del .docker-compose-deps
+  - cd devenv
   - docker-compose up
   depends_on: []
   image: alpine:3.18.4
@@ -4724,6 +4726,6 @@ kind: secret
 name: gcr_credentials
 ---
 kind: signature
-hmac: e157c22ba8652e4501b577a103fb94b01100a9a2430714f10a014db0badfc866
+hmac: 3ff4eaab2839e6c562feb736b00f23f24624724dc80a574daf2ea11259586025
 
 ...
