@@ -35,15 +35,15 @@ import {
   QueryFilterOptions,
   renderLegendFormat,
   LegacyMetricFindQueryOptions,
+  AdHocVariableFilter,
+  urlUtil,
+  DataSourceWithQueryModificationSupport,
 } from '@grafana/data';
 import { Duration } from '@grafana/lezer-logql';
-import { BackendSrvRequest, config, DataSourceWithBackend } from '@grafana/runtime';
+import { BackendSrvRequest, config, DataSourceWithBackend, getTemplateSrv, TemplateSrv } from '@grafana/runtime';
 import { DataQuery } from '@grafana/schema';
-import { convertToWebSocketUrl } from 'app/core/utils/explore';
 import { getTimeSrv, TimeSrv } from 'app/features/dashboard/services/TimeSrv';
-import { getTemplateSrv, TemplateSrv } from 'app/features/templating/template_srv';
 
-import { serializeParams } from '../../../core/utils/fetch';
 import { queryLogsSample, queryLogsVolume } from '../../../features/logs/logsModel';
 import { getLogLevelFromKey } from '../../../features/logs/utils';
 import { replaceVariables, returnVariables } from '../prometheus/querybuilder/shared/parsingUtils';
@@ -83,7 +83,7 @@ import {
   isQueryWithError,
   requestSupportsSplitting,
 } from './queryUtils';
-import { doLokiChannelStream } from './streaming';
+import { convertToWebSocketUrl, doLokiChannelStream } from './streaming';
 import { trackQuery } from './tracking';
 import {
   LokiOptions,
@@ -136,7 +136,8 @@ export class LokiDatasource
     DataSourceWithSupplementaryQueriesSupport<LokiQuery>,
     DataSourceWithQueryImportSupport<LokiQuery>,
     DataSourceWithQueryExportSupport<LokiQuery>,
-    DataSourceWithToggleableQueryFiltersSupport<LokiQuery>
+    DataSourceWithToggleableQueryFiltersSupport<LokiQuery>,
+    DataSourceWithQueryModificationSupport<LokiQuery>
 {
   private streams = new LiveStreams();
   private logContextProvider: LogContextProvider;
@@ -384,7 +385,7 @@ export class LokiDatasource
   private createLiveTarget(target: LokiQuery, maxDataPoints: number): LokiLiveTarget {
     const query = target.expr;
     const baseUrl = this.instanceSettings.url;
-    const params = serializeParams({ query });
+    const params = urlUtil.serializeParams({ query });
 
     return {
       query,
@@ -420,13 +421,20 @@ export class LokiDatasource
    * Implemented as a part of DataSourceApi. Interpolates variables and adds ad hoc filters to a list of Loki queries.
    * @returns An array of expanded Loki queries with interpolated variables and ad hoc filters.
    */
-  interpolateVariablesInQueries(queries: LokiQuery[], scopedVars: ScopedVars): LokiQuery[] {
+  interpolateVariablesInQueries(
+    queries: LokiQuery[],
+    scopedVars: ScopedVars,
+    adhocFilters?: AdHocVariableFilter[]
+  ): LokiQuery[] {
     let expandedQueries = queries;
     if (queries && queries.length) {
       expandedQueries = queries.map((query) => ({
         ...query,
         datasource: this.getRef(),
-        expr: this.addAdHocFilters(this.templateSrv.replace(query.expr, scopedVars, this.interpolateQueryExpr)),
+        expr: this.addAdHocFilters(
+          this.templateSrv.replace(query.expr, scopedVars, this.interpolateQueryExpr),
+          adhocFilters
+        ),
       }));
     }
 
@@ -451,12 +459,12 @@ export class LokiDatasource
   }
 
   /**
-   * Retrieve the current time range as Loki parameters.
+   * Given a time range, returns it as Loki parameters.
    * @returns An object containing the start and end times in nanoseconds since the Unix epoch.
    */
-  getTimeRangeParams() {
-    const timeRange = this.getTimeRange();
-    return { start: timeRange.from.valueOf() * NS_IN_MS, end: timeRange.to.valueOf() * NS_IN_MS };
+  getTimeRangeParams(timeRange?: TimeRange) {
+    const range = timeRange ?? this.getTimeRange();
+    return { start: range.from.valueOf() * NS_IN_MS, end: range.to.valueOf() * NS_IN_MS };
   }
 
   /**
@@ -525,7 +533,7 @@ export class LokiDatasource
    * Used in `getStats`. Retrieves statistics for a Loki query and processes them into a QueryStats object.
    * @returns A Promise that resolves to a QueryStats object containing the query statistics or undefined if the query is invalid.
    */
-  async getQueryStats(query: LokiQuery): Promise<QueryStats | undefined> {
+  async getQueryStats(query: LokiQuery, timeRange: TimeRange): Promise<QueryStats | undefined> {
     // if query is invalid, clear stats, and don't request
     if (isQueryWithError(this.interpolateString(query.expr, placeHolderScopedVars))) {
       return undefined;
@@ -535,7 +543,7 @@ export class LokiDatasource
     let statsForAll: QueryStats = { streams: 0, chunks: 0, bytes: 0, entries: 0 };
 
     for (const idx in labelMatchers) {
-      const { start, end } = this.getStatsTimeRange(query, Number(idx));
+      const { start, end } = this.getStatsTimeRange(query, Number(idx), timeRange);
 
       if (start === undefined || end === undefined) {
         return { streams: 0, chunks: 0, bytes: 0, entries: 0, message: 'Query size estimate not available.' };
@@ -572,7 +580,11 @@ export class LokiDatasource
    * @returns An object containing the start and end time in nanoseconds (NS_IN_MS) or undefined if the time range cannot be estimated.
    */
 
-  getStatsTimeRange(query: LokiQuery, idx: number): { start: number | undefined; end: number | undefined } {
+  getStatsTimeRange(
+    query: LokiQuery,
+    idx: number,
+    timeRange: TimeRange
+  ): { start: number | undefined; end: number | undefined } {
     let start: number, end: number;
     const NS_IN_MS = 1000000;
     const durationNodes = getNodesFromQuery(query.expr, [Duration]);
@@ -584,7 +596,7 @@ export class LokiDatasource
         return { start: undefined, end: undefined };
       }
       // logs query with range type
-      return this.getTimeRangeParams();
+      return this.getTimeRangeParams(timeRange);
     }
 
     if (query.queryType === LokiQueryType.Instant) {
@@ -592,7 +604,7 @@ export class LokiDatasource
 
       if (!!durations[idx]) {
         // if query has a duration e.g. [1m]
-        end = this.getTimeRangeParams().end;
+        end = this.getTimeRangeParams(timeRange).end;
         start = end - rangeUtil.intervalToMs(durations[idx]) * NS_IN_MS;
         return { start, end };
       } else {
@@ -600,7 +612,7 @@ export class LokiDatasource
 
         if (/(\$__auto|\$__range)/.test(query.expr)) {
           // if $__auto or $__range is used, we can estimate the time range using the selected range
-          return this.getTimeRangeParams();
+          return this.getTimeRangeParams(timeRange);
         }
 
         // otherwise we cant estimate the time range
@@ -609,19 +621,19 @@ export class LokiDatasource
     }
 
     // metric query with range type
-    return this.getTimeRangeParams();
+    return this.getTimeRangeParams(timeRange);
   }
 
   /**
    * Retrieves statistics for a Loki query and returns the QueryStats object.
    * @returns A Promise that resolves to a QueryStats object or null if the query is invalid or has no statistics.
    */
-  async getStats(query: LokiQuery): Promise<QueryStats | null> {
-    if (!query) {
+  async getStats(query: LokiQuery, timeRange: TimeRange): Promise<QueryStats | null> {
+    if (!query.expr) {
       return null;
     }
 
-    const response = await this.getQueryStats(query);
+    const response = await this.getQueryStats(query, timeRange);
 
     if (!response) {
       return null;
@@ -751,7 +763,7 @@ export class LokiDatasource
    * Currently, it works for logs data only.
    * @returns A Promise that resolves to an array of DataFrames containing data samples.
    */
-  async getDataSamples(query: LokiQuery): Promise<DataFrame[]> {
+  async getDataSamples(query: LokiQuery, timeRange?: TimeRange): Promise<DataFrame[]> {
     // Currently works only for logs sample
     if (!isLogsQuery(query.expr) || isQueryWithError(this.interpolateString(query.expr, placeHolderScopedVars))) {
       return [];
@@ -765,8 +777,8 @@ export class LokiDatasource
       supportingQueryType: SupportingQueryType.DataSample,
     };
 
-    const timeRange = this.getTimeRange();
-    const request = makeRequest(lokiLogsQuery, timeRange, CoreApp.Unknown, REF_ID_DATA_SAMPLES, true);
+    const range = timeRange ?? this.getTimeRange();
+    const request = makeRequest(lokiLogsQuery, range, CoreApp.Unknown, REF_ID_DATA_SAMPLES, true);
     return await lastValueFrom(this.query(request).pipe(switchMap((res) => of(res.data))));
   }
 
@@ -857,7 +869,7 @@ export class LokiDatasource
   }
 
   /**
-   * Implemented as part of `DataSourceApi`. Used to modify a query based on the provided action.
+   * Implemented as part of `DataSourceWithQueryModificationSupport`. Used to modify a query based on the provided action.
    * It is used, for example, in the Query Builder to apply hints such as parsers, operations, etc.
    * @returns A new LokiQuery with the specified modification applied.
    */
@@ -941,6 +953,25 @@ export class LokiDatasource
         break;
     }
     return { ...query, expr: expression };
+  }
+
+  /**
+   * Implemented as part of `DataSourceWithQueryModificationSupport`. Returns a list of operation
+   * types that are supported by `modifyQuery()`.
+   */
+  getSupportedQueryModifications() {
+    return [
+      'ADD_FILTER',
+      'ADD_FILTER_OUT',
+      'ADD_LOGFMT_PARSER',
+      'ADD_JSON_PARSER',
+      'ADD_UNPACK_PARSER',
+      'ADD_NO_PIPELINE_ERROR',
+      'ADD_LEVEL_LABEL_FORMAT',
+      'ADD_LABEL_FILTER',
+      'ADD_STRING_FILTER',
+      'ADD_STRING_FILTER_OUT',
+    ];
   }
 
   /**
@@ -1046,8 +1077,11 @@ export class LokiDatasource
    * @returns The query expression with ad hoc filters and correctly escaped values.
    * @todo this.templateSrv.getAdhocFilters() is deprecated
    */
-  addAdHocFilters(queryExpr: string) {
-    const adhocFilters = this.templateSrv.getAdhocFilters(this.name);
+  addAdHocFilters(queryExpr: string, adhocFilters?: AdHocVariableFilter[]) {
+    if (!adhocFilters) {
+      return queryExpr;
+    }
+
     let expr = replaceVariables(queryExpr);
 
     expr = adhocFilters.reduce((acc: string, filter: { key: string; operator: string; value: string }) => {
@@ -1085,12 +1119,12 @@ export class LokiDatasource
    * It is called from DatasourceWithBackend.
    * @returns A modified Loki query with template variables and ad hoc filters applied.
    */
-  applyTemplateVariables(target: LokiQuery, scopedVars: ScopedVars): LokiQuery {
+  applyTemplateVariables(target: LokiQuery, scopedVars: ScopedVars, adhocFilters?: AdHocVariableFilter[]): LokiQuery {
     // We want to interpolate these variables on backend because we support using them in
     // alerting/ML queries and we want to have consistent interpolation for all queries
     const { __auto, __interval, __interval_ms, __range, __range_s, __range_ms, ...rest } = scopedVars || {};
 
-    const exprWithAdHoc = this.addAdHocFilters(target.expr);
+    const exprWithAdHoc = this.addAdHocFilters(target.expr, adhocFilters);
 
     return {
       ...target,
