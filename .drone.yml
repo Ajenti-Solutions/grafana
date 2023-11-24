@@ -584,10 +584,10 @@ steps:
   name: grafana-server
 - commands:
   - apt-get update
-  - sudo apt-get install docker-compose-plugin
+  - apt-get install docker-compose-plugin
   - cd devenv && docker-compose up
   depends_on: []
-  image: golang:1.21.3-alpine
+  image: google/cloud-sdk:431.0.0
   name: start-prometheus
 - commands:
   - ./bin/build e2e-tests --port 3001 --suite dashboards-suite
@@ -1853,10 +1853,10 @@ steps:
   name: grafana-server
 - commands:
   - apt-get update
-  - sudo apt-get install docker-compose-plugin
+  - apt-get install docker-compose-plugin
   - cd devenv && docker-compose up
   depends_on: []
-  image: golang:1.21.3-alpine
+  image: google/cloud-sdk:431.0.0
   name: start-prometheus
 - commands:
   - ./bin/build e2e-tests --port 3001 --suite dashboards-suite
@@ -4716,6 +4716,6 @@ kind: secret
 name: gcr_credentials
 ---
 kind: signature
-hmac: 88fc80d6981c5566553f57aabae08c2fbcc6bffcbfd127b2141752e94a9c4255
+hmac: 216a1da5c069ad183e7b80a9bb7bd767cccebe1b48ea146b80125a6dffaa931d
 
 ...

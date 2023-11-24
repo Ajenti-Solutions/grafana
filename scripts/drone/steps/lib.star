@@ -786,10 +786,10 @@ def start_prometheus_step():
     return {
         "name": "start-prometheus",
         "depends_on": [],
-        "image": images["go"],
+        "image": images["cloudsdk"],
         "commands": [
             "apt-get update",
-            "sudo apt-get install docker-compose-plugin",
+            "apt-get install docker-compose-plugin",
             "cd devenv && docker-compose up",
         ],
     }
