@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/grafana/grafana/pkg/api/dtos"
 	"github.com/grafana/grafana/pkg/api/response"
 	"github.com/grafana/grafana/pkg/api/routing"
 	"github.com/grafana/grafana/pkg/infra/log"
@@ -12,6 +13,7 @@ import (
 	"github.com/grafana/grafana/pkg/services/anonymous/anonimpl/anonstore"
 	contextmodel "github.com/grafana/grafana/pkg/services/contexthandler/model"
 	"github.com/grafana/grafana/pkg/setting"
+	"github.com/grafana/grafana/pkg/util"
 )
 
 type AnonDeviceServiceAPI struct {
@@ -40,7 +42,8 @@ func NewAnonDeviceServiceAPI(
 func (api *AnonDeviceServiceAPI) RegisterAPIEndpoints() {
 	auth := accesscontrol.Middleware(api.accesscontrol)
 	api.RouterRegister.Group("/api/anonymous", func(anonRoutes routing.RouteRegister) {
-		anonRoutes.Get("/anonstats", auth(accesscontrol.EvalPermission(accesscontrol.ActionServerStatsRead)), routing.Wrap(api.CountDevices))
+		anonRoutes.Get("/stats", auth(accesscontrol.EvalPermission(accesscontrol.ActionServerStatsRead)), routing.Wrap(api.CountDevices))
+		anonRoutes.Get("/devices", auth(accesscontrol.EvalPermission(accesscontrol.ActionUsersRead)), routing.Wrap(api.ListDevices))
 	})
 }
 
@@ -57,13 +60,41 @@ func (api *AnonDeviceServiceAPI) RegisterAPIEndpoints() {
 // 	DeleteDevicesOlderThan(ctx context.Context, olderThan time.Time) error
 // }
 
-// ListDevices returns all devices that have been updated between the given times.
-// func (a *AnonDeviceServiceAPI) ListDevices(ctx context.Context) ([]*anonstore.Device, error) {
-// 	//, from *time.Time, to *time.Time
-// 	from := time.Now()
+func (api *AnonDeviceServiceAPI) ListDevices(c *contextmodel.ReqContext) response.Response {
+	fromTime := time.Now().Add(-anonymous.ThirtyDays)
+	toTime := time.Now().Add(time.Minute)
 
-// 	return a.service.ListDevices(ctx, from, to)
-// }
+	devices, err := api.store.ListDevices(c.Req.Context(), &fromTime, &toTime)
+	if err != nil {
+		return response.Error(http.StatusInternalServerError, "Failed to list devices", err)
+	}
+	devices = []*anonstore.Device{
+		{
+			ID:        1,
+			DeviceID:  "1",
+			ClientIP:  "192",
+			UserAgent: "Moziilla",
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		},
+	}
+	type resDevice struct {
+		anonstore.Device
+		LastSeenAt string `json:"lastSeenAt"`
+		AvatarUrl  string `json:"avatarUrl"`
+	}
+	// convert to response format
+	resDevices := make([]*resDevice, 0, len(devices))
+	for _, device := range devices {
+		resDevices = append(resDevices, &resDevice{
+			Device:     *device,
+			LastSeenAt: util.GetAgeString(device.UpdatedAt),
+			AvatarUrl:  dtos.GetGravatarUrl(device.DeviceID),
+		})
+	}
+
+	return response.JSON(http.StatusOK, resDevices)
+}
 
 // swagger:route GET /anonusers signed_in_user getSignedInUser
 //
@@ -83,5 +114,6 @@ func (api *AnonDeviceServiceAPI) CountDevices(c *contextmodel.ReqContext) respon
 	if err != nil {
 		return response.Error(http.StatusInternalServerError, "Failed to list devices", err)
 	}
+	devices = 2
 	return response.JSON(http.StatusOK, devices)
 }

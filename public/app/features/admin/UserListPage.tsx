@@ -12,6 +12,7 @@ import { AccessControlAction } from '../../types';
 import { UsersListPageContent } from '../users/UsersListPage';
 
 import { UserListAdminPageContent } from './UserListAdminPage';
+import { UserListAnonymousPageContent } from './UserListAnonymousPage';
 import { UserListPublicDashboardPage } from './UserListPublicDashboardPage/UserListPublicDashboardPage';
 
 enum TabView {
@@ -35,7 +36,7 @@ const PublicDashboardsTab = ({ view, setView }: { view: TabView | null; setView:
 const TAB_PAGE_MAP: Record<TabView, React.ReactElement> = {
   [TabView.ADMIN]: <UserListAdminPageContent />,
   [TabView.ORG]: <UsersListPageContent />,
-  [TabView.ANON]: <UsersListPageContent />,
+  [TabView.ANON]: <UserListAnonymousPageContent />,
   [TabView.PUBLIC_DASHBOARDS]: <UserListPublicDashboardPage />,
 };
 
