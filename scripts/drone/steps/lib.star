@@ -786,10 +786,9 @@ def start_prometheus_step():
     return {
         "name": "start-prometheus",
         "depends_on": [],
-        "image": images["cloudsdk"],
+        "image": images["alpine"],
         "commands": [
-            "apt-get update",
-            "apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin",
+            "apk add docker docker-cli-compose",
             "cd devenv && docker-compose up",
         ],
     }
