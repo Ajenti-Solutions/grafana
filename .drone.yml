@@ -584,7 +584,7 @@ steps:
   name: grafana-server
 - commands:
   - apt-get update
-  - apt-get install docker-compose-plugin
+  - apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin
   - cd devenv && docker-compose up
   depends_on: []
   image: google/cloud-sdk:431.0.0
@@ -1853,7 +1853,7 @@ steps:
   name: grafana-server
 - commands:
   - apt-get update
-  - apt-get install docker-compose-plugin
+  - apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin
   - cd devenv && docker-compose up
   depends_on: []
   image: google/cloud-sdk:431.0.0
@@ -4716,6 +4716,6 @@ kind: secret
 name: gcr_credentials
 ---
 kind: signature
-hmac: 216a1da5c069ad183e7b80a9bb7bd767cccebe1b48ea146b80125a6dffaa931d
+hmac: ce8d4a79fd026d4973e8a9908800ee29cecd5f9d42dc62cfa58cc9c7e8a12947
 
 ...

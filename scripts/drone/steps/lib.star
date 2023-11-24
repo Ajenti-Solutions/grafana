@@ -789,7 +789,7 @@ def start_prometheus_step():
         "image": images["cloudsdk"],
         "commands": [
             "apt-get update",
-            "apt-get install docker-compose-plugin",
+            "apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin",
             "cd devenv && docker-compose up",
         ],
     }
