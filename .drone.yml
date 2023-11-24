@@ -583,8 +583,12 @@ steps:
   image: alpine:3.18.4
   name: grafana-server
 - commands:
-  - cd devenv
-  - ls
+  - apk update
+  - apk add --no-cache docker-cli python3
+  - apk add --no-cache --virtual .docker-compose-deps python3-dev libffi-dev openssl-dev
+    gcc libc-dev make
+  - pip3 install docker-compose
+  - apk del .docker-compose-deps
   - docker-compose up
   depends_on: []
   image: alpine:3.18.4
@@ -1852,8 +1856,12 @@ steps:
   image: alpine:3.18.4
   name: grafana-server
 - commands:
-  - cd devenv
-  - ls
+  - apk update
+  - apk add --no-cache docker-cli python3
+  - apk add --no-cache --virtual .docker-compose-deps python3-dev libffi-dev openssl-dev
+    gcc libc-dev make
+  - pip3 install docker-compose
+  - apk del .docker-compose-deps
   - docker-compose up
   depends_on: []
   image: alpine:3.18.4
@@ -4716,6 +4724,6 @@ kind: secret
 name: gcr_credentials
 ---
 kind: signature
-hmac: 21ff87d1f20e78c0a404079ee9c87a5cbf6931750bb999407b2a11ea077545a0
+hmac: e157c22ba8652e4501b577a103fb94b01100a9a2430714f10a014db0badfc866
 
 ...
