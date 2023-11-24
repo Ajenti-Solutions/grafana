@@ -788,8 +788,9 @@ def start_prometheus_step():
         "depends_on": [],
         "image": images["alpine"],
         "commands": [
+            "mkdir grafana",
             "apk add docker docker-cli-compose",
-            "cd devenv && docker-compose up",
+            "cd grafana/devenv && docker-compose up"
         ],
     }
 

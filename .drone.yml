@@ -583,8 +583,9 @@ steps:
   image: alpine:3.18.4
   name: grafana-server
 - commands:
+  - mkdir grafana
   - apk add docker docker-cli-compose
-  - cd devenv && docker-compose up
+  - cd grafana/devenv && docker-compose up
   depends_on: []
   image: alpine:3.18.4
   name: start-prometheus
@@ -1851,8 +1852,9 @@ steps:
   image: alpine:3.18.4
   name: grafana-server
 - commands:
+  - mkdir grafana
   - apk add docker docker-cli-compose
-  - cd devenv && docker-compose up
+  - cd grafana/devenv && docker-compose up
   depends_on: []
   image: alpine:3.18.4
   name: start-prometheus
@@ -4714,6 +4716,6 @@ kind: secret
 name: gcr_credentials
 ---
 kind: signature
-hmac: b803563a3dd646c4e091e4b5589a2c90c06c6e87fb67ed2c45288389a288b359
+hmac: 9c8bb5f1b33272f578b3e4631bb03d417fe7084eb323c38da710be86f97dc630
 
 ...
