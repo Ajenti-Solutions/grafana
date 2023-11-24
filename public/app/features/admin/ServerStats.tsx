@@ -2,6 +2,7 @@ import { css } from '@emotion/css';
 import React, { useEffect, useState } from 'react';
 
 import { GrafanaTheme2 } from '@grafana/data';
+import { featureEnabled } from '@grafana/runtime';
 import { CardContainer, LinkButton, useStyles2 } from '@grafana/ui';
 import { AccessControlAction } from 'app/types';
 
@@ -82,7 +83,7 @@ export const ServerStats = () => {
               { name: 'Users total', value: stats.users },
               { name: 'Active users in last 30 days', value: stats.activeUsers },
               { name: 'Active sessions', value: stats.activeSessions },
-              ...(!!stats.activeAnonymousUsers
+              ...(!!stats.activeAnonymousUsers && featureEnabled('anonymousAccess')
                 ? [{ name: 'Active anonymous users in last 30 days', value: stats.activeAnonymousUsers }]
                 : []),
             ]}
