@@ -23,9 +23,7 @@
     }
 
     .sidemenu__logo {
-      @include media-breakpoint-down(sm) {
-        display: block;
-      }
+        display: none;
     }
   }
 
@@ -57,6 +55,7 @@
 
 @include media-breakpoint-down(sm) {
   nav.page-toolbar {
+    padding-left: 53px;
     &--fullscreen {
       padding-left: $space-md;
     }

@@ -166,6 +166,9 @@ export const DashNav = React.memo<Props>((props) => {
     const { canStar, canShare, isStarred } = dashboard.meta;
     const buttons: ReactNode[] = [];
 
+
+    return [];
+/*
     if (kioskMode || isPlaylistRunning()) {
       return [];
     }
@@ -198,6 +201,7 @@ export const DashNav = React.memo<Props>((props) => {
 
     addCustomContent(customLeftActions, buttons);
     return buttons;
+    */
   };
 
   const renderPlaylistControls = () => {

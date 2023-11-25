@@ -27,14 +27,7 @@ export function BreadcrumbItem({ href, isCurrent, text }: Props) {
         </span>
       ) : (
         <>
-          <a
-            onClick={onBreadcrumbClick}
-            data-testid={Components.Breadcrumbs.breadcrumb(text)}
-            className={cx(styles.breadcrumb, styles.breadcrumbLink)}
-            href={href}
-          >
             {text}
-          </a>
           <div className={styles.separator} aria-hidden={true}>
             <Icon name="angle-right" />
           </div>

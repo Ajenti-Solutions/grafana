@@ -1,5 +1,6 @@
 import { css } from '@emotion/css';
 import React from 'react';
+import config from 'app/core/config';
 
 import { GrafanaTheme2, NavModelItem } from '@grafana/data';
 import { Components } from '@grafana/e2e-selectors';
@@ -36,40 +37,57 @@ export function NavToolbar({
   const homeNav = useSelector((state) => state.navIndex)[HOME_NAV_ID];
   const styles = useStyles2(getStyles);
   const breadcrumbs = buildBreadcrumbs(sectionNav, pageNav, homeNav);
+  const isAdmin = config.bootData.user.isGrafanaAdmin;
 
+
+  if (isAdmin) {
+    return (
+      <div data-testid={Components.NavToolbar.container} className={styles.pageToolbar}>
+        <div className={styles.menuButton}>
+          <IconButton
+            name="bars"
+            tooltip={t('navigation.toolbar.toggle-menu', 'Toggle menu')}
+            tooltipPlacement="bottom"
+            size="xl"
+            onClick={onToggleMegaMenu}
+          />
+        </div>
+        <Breadcrumbs breadcrumbs={breadcrumbs} className={styles.breadcrumbs} />
+        <div className={styles.actions}>
+          {actions}
+          {actions && <NavToolbarSeparator />}
+          {searchBarHidden && (
+            <ToolbarButton
+              onClick={onToggleKioskMode}
+              narrow
+              title={t('navigation.toolbar.enable-kiosk', 'Enable kiosk mode')}
+              icon="monitor"
+            />
+          )}
+          <ToolbarButton
+            onClick={onToggleSearchBar}
+            narrow
+            title={t('navigation.toolbar.toggle-search-bar', 'Toggle top search bar')}
+          >
+            <Icon name={searchBarHidden ? 'angle-down' : 'angle-up'} size="xl" />
+          </ToolbarButton>
+        </div>
+      </div>
+    );
+  }else{
   return (
     <div data-testid={Components.NavToolbar.container} className={styles.pageToolbar}>
-      <div className={styles.menuButton}>
-        <IconButton
-          name="bars"
-          tooltip={t('navigation.toolbar.toggle-menu', 'Toggle menu')}
-          tooltipPlacement="bottom"
-          size="xl"
-          onClick={onToggleMegaMenu}
-        />
-      </div>
       <Breadcrumbs breadcrumbs={breadcrumbs} className={styles.breadcrumbs} />
       <div className={styles.actions}>
         {actions}
-        {actions && <NavToolbarSeparator />}
-        {searchBarHidden && (
-          <ToolbarButton
-            onClick={onToggleKioskMode}
-            narrow
-            title={t('navigation.toolbar.enable-kiosk', 'Enable kiosk mode')}
-            icon="monitor"
-          />
-        )}
-        <ToolbarButton
-          onClick={onToggleSearchBar}
-          narrow
-          title={t('navigation.toolbar.toggle-search-bar', 'Toggle top search bar')}
-        >
-          <Icon name={searchBarHidden ? 'angle-down' : 'angle-up'} size="xl" />
-        </ToolbarButton>
+        {searchBarHidden}
       </div>
     </div>
   );
+
+
+
+  }
 }
 
 const getStyles = (theme: GrafanaTheme2) => {
